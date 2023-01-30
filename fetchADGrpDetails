@@ -1,0 +1,32 @@
+from flask import Flask, jsonify
+import ldap
+
+app = Flask(__name__)
+
+@app.route('/group/<group_name>', methods=['GET'])
+def get_group_details(group_name):
+    try:
+        # Connect to AD server
+        l = ldap.initialize("ldap://AD.server.com")
+        l.set_option(ldap.OPT_REFERRALS, 0)
+        l.simple_bind_s("bind_dn", "bind_password")
+
+        # Search for the group
+        result = l.search_s("dc=example,dc=com", ldap.SCOPE_SUBTREE,
+                            "(&(objectCategory=group)(cn={}))".format(group_name))
+
+        # Extract group details
+        group_dn, group_attrs = result[0]
+        group_details = {
+            "name": group_attrs["cn"][0].decode(),
+            "description": group_attrs["description"][0].decode() if "description" in group_attrs else "",
+            "member_count": len(group_attrs["member"]),
+        }
+
+        return jsonify(group_details)
+    
+    except Exception as e:
+        return "Error: {}".format(str(e)), 500
+
+if __name__ == '__main__':
+    app.run()
