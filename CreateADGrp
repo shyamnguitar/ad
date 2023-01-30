@@ -1,0 +1,38 @@
+from flask import Flask, request, jsonify
+import ldap
+
+app = Flask(__name__)
+
+@app.route('/group', methods=['POST'])
+def create_group():
+    try:
+        group_name = request.json.get("name")
+        group_description = request.json.get("description", "")
+
+        # Connect to AD server
+        l = ldap.initialize("ldap://AD.server.com")
+        l.set_option(ldap.OPT_REFERRALS, 0)
+        l.simple_bind_s("bind_dn", "bind_password")
+
+        # Create group DN
+        group_dn = "cn={},ou=Groups,dc=example,dc=com".format(group_name)
+
+        # Define group attributes
+        group_attrs = {
+            "objectClass": ["top", "group"],
+            "cn": group_name,
+            "description": group_description,
+            "sAMAccountName": group_name,
+            "groupType": "-2147483646",
+        }
+
+        # Add group to AD
+        l.add_s(group_dn, ldap.modlist.addModlist(group_attrs))
+
+        return jsonify({"message": "Group created successfully"}), 201
+    
+    except Exception as e:
+        return "Error: {}".format(str(e)), 500
+
+if __name__ == '__main__':
+    app.run()
