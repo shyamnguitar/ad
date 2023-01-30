@@ -1,0 +1,28 @@
+from flask import Flask, jsonify
+import ldap
+
+app = Flask(__name__)
+
+@app.route('/group/<group_name>', methods=['GET'])
+def check_group_exists(group_name):
+    try:
+        # Connect to AD server
+        l = ldap.initialize("ldap://AD.server.com")
+        l.set_option(ldap.OPT_REFERRALS, 0)
+        l.simple_bind_s("bind_dn", "bind_password")
+
+        # Search for the group
+        result = l.search_s("dc=example,dc=com", ldap.SCOPE_SUBTREE,
+                            "(&(objectCategory=group)(cn={}))".format(group_name))
+
+        # Check if group exists
+        if len(result) > 0:
+            return jsonify({"message": "Group exists"}), 200
+        else:
+            return jsonify({"message": "Group does not exist"}), 404
+    
+    except Exception as e:
+        return "Error: {}".format(str(e)), 500
+
+if __name__ == '__main__':
+    app.run()
